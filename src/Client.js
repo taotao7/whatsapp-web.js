@@ -240,9 +240,12 @@ class Client extends EventEmitter {
                 this.emit(Events.READY);
                 this.authStrategy.afterAuthReady();
             });
-
+            let lastPercent = null;
             await this.pupPage.exposeFunction('onOfflineProgressUpdateEvent', async (percent) => {
-                this.emit(Events.LOADING_SCREEN, percent, 'WhatsApp'); // Message is hardcoded as "WhatsApp" for now
+               if (lastPercent !== percent) {
+                    lastPercent = percent;
+                    this.emit(Events.LOADING_SCREEN, percent, 'WhatsApp'); // Message is hardcoded as "WhatsApp" for now
+                }
             });
         }
         const logoutCatchInjected = await this.pupPage.evaluate(() => {
@@ -393,7 +396,7 @@ class Client extends EventEmitter {
                          * @param {GroupNotification} notification GroupNotification with more information about the action
                          */
                         this.emit(Events.GROUP_ADMIN_CHANGED, notification);
-                    } else if (msg.subtype === 'created_membership_requests') {
+                    } else if (msg.subtype === 'created_membership_request') {
                         /**
                          * Emitted when some user requested to join the group
                          * that has the membership approval mode turned on
@@ -1209,7 +1212,7 @@ class Client extends EventEmitter {
         const profilePic = await this.pupPage.evaluate(async contactId => {
             try {
                 const chatWid = window.Store.WidFactory.createWid(contactId);
-                return await (window.WWebJS.compareWwebVersions(window.Debug.VERSION, '<', '2.3000.0') ? window.Store.ProfilePic.profilePicFind(chatWid) : window.Store.ProfilePic.requestProfilePicFromServer(chatWid));
+                return window.WWebJS.compareWwebVersions(window.Debug.VERSION, '<', '2.3000.0') ? await window.Store.ProfilePic.profilePicFind(chatWid) : await window.Store.ProfilePic.requestProfilePicFromServer(chatWid);
             } catch (err) {
                 if (err.name === 'ServerStatusCodeError') return undefined;
                 throw err;
